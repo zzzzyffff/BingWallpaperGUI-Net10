@@ -2,22 +2,34 @@
 
 基于原 Python/tkinter 版本重构的 Windows 桌面壁纸工具，使用 **.NET 10 + WPF + MVVM** 实现。
 
+[![Release](https://img.shields.io/github/v/release/zzzzyffff/BingWallpaperGUI-Net10)](https://github.com/zzzzyffff/BingWallpaperGUI-Net10/releases/latest)
+[![License](https://img.shields.io/github/license/zzzzyffff/BingWallpaperGUI-Net10)](LICENSE)
+
+## 下载
+
+直接下载最新 Release 中的压缩包，解压后运行 `BingWallpaperGUI.exe` 即可使用（独立发布版本无需安装 .NET 运行时）。
+
+👉 [Latest Release](https://github.com/zzzzyffff/BingWallpaperGUI-Net10/releases/latest)
+
 ## 功能特性
 
 - 获取 Bing 每日壁纸
 - 预览并一键设为桌面背景
 - 保存到本地
-- 查看历史壁纸（缩略图、标题、版权、日期）
+- 查看历史壁纸（缩略图、标题、版权、日期、分辨率、地区）
 - 开机自动更换壁纸（通过注册表 `HKEY_CURRENT_USER\...\Run`）
 - 支持多地区、多分辨率选择
+- 根据主屏幕物理分辨率自动推荐最佳下载分辨率
 - 深色主题界面
 - 支持 `--auto-start` 命令行参数，自动下载并设置壁纸后退出
+- 单实例运行，避免重复启动
 
 ## 项目结构
 
 ```
 BingWallpaperGUI-Net10/
 ├── BingWallpaperWPF.csproj
+├── app.manifest
 ├── App.xaml / App.xaml.cs
 ├── MainWindow.xaml / MainWindow.xaml.cs
 ├── Models/
@@ -32,6 +44,7 @@ BingWallpaperGUI-Net10/
 │   ├── WallpaperService.cs
 │   ├── AutoStartService.cs
 │   ├── DataService.cs
+│   ├── Logger.cs
 │   ├── IDialogService.cs
 │   └── DialogService.cs
 ├── Views/
@@ -40,9 +53,12 @@ BingWallpaperGUI-Net10/
 │   ├── BoolToVisibilityConverter.cs
 │   ├── NullToVisibilityConverter.cs
 │   ├── FilePathToThumbnailConverter.cs
-│   └── BingDateConverter.cs
+│   ├── BingDateConverter.cs
+│   └── InvertedBooleanToVisibilityConverter.cs
 ├── icon.ico
-└── README.md
+├── README.md
+├── LICENSE
+└── .gitignore
 ```
 
 ## 开发环境
@@ -65,20 +81,23 @@ dotnet build
 dotnet run
 ```
 
-## 发布为独立可执行文件
+## 发布
 
 ```bash
-# 框架依赖发布（推荐，体积小）
+# 框架依赖发布（体积小，需目标机器安装 .NET 10 Windows Desktop Runtime）
 dotnet publish -c Release -r win-x64 --self-contained false
 
-# 独立发布（无需安装 .NET 运行时）
+# 独立发布（无需安装 .NET 运行时，体积较大）
 dotnet publish -c Release -r win-x64 --self-contained true
 ```
 
-发布输出位于：
+发布输出固定到项目根目录：
 
 ```
-bin\Release\net10.0-windows\win-x64\publish\
+publish/
+├── BingWallpaperGUI.exe
+├── BingWallpaperGUI.dll
+└── ...
 ```
 
 ## 数据目录
@@ -115,3 +134,4 @@ wallpapers/
 - 首次设置开机启动时，程序会将自己的路径写入注册表，并附加 `--auto-start` 参数。
 - 自动启动模式下，窗口会隐藏，下载并设置壁纸后自动退出。
 - 壁纸存储目录与程序同级，移动程序时请一并复制 `wallpapers` 文件夹。
+- 删除历史壁纸时，会同时删除对应的图片文件和 `.metadata/` 下的 JSON 元数据。
