@@ -1,0 +1,106 @@
+<Window x:Class="BingWallpaperWPF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:BingWallpaperWPF.ViewModels"
+        xmlns:conv="clr-namespace:BingWallpaperWPF.Converters"
+        Title="BingWallpaperGUI v1.0.0" Height="700" Width="1000"
+        MinWidth="900" MinHeight="650"
+        Background="#1e1e1e" Foreground="#e0e0e0"
+        WindowStartupLocation="CenterScreen"
+        Loaded="Window_Loaded"
+        Closing="Window_Closing"
+        mc:Ignorable="d">
+    <Window.Resources>
+        <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="280"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Preview Area -->
+            <Grid Grid.Column="0" Margin="0,0,12,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Background="#2d2d2d" CornerRadius="6" ClipToBounds="True">
+                    <Grid>
+                        <Image Source="{Binding PreviewImage}" Stretch="Uniform"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               Visibility="{Binding PreviewImage, Converter={StaticResource NullToVisibilityConverter}}"/>
+                        <TextBlock Text="点击「获取今日壁纸」开始" Foreground="#888888"
+                                   FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Visibility="{Binding PreviewImage, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=invert}"/>
+                    </Grid>
+                </Border>
+
+                <TextBlock Grid.Row="1" Text="{Binding InfoText}" Foreground="#aaaaaa" FontSize="12"
+                           Margin="0,8,0,0" TextTrimming="CharacterEllipsis"/>
+            </Grid>
+
+            <!-- Right: Control Panel -->
+            <Border Grid.Column="1" Background="#2d2d2d" CornerRadius="6" Padding="18">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Bing 壁纸" FontSize="22" FontWeight="Bold" Margin="0,0,0,18"/>
+
+                    <Label Grid.Row="1" Content="分辨率" Margin="0,8,0,2"/>
+                    <ComboBox Grid.Row="2" ItemsSource="{Binding Resolutions}" SelectedItem="{Binding SelectedResolution}"/>
+
+                    <Label Grid.Row="3" Content="地区" Margin="0,12,0,2"/>
+                    <ComboBox Grid.Row="4" ItemsSource="{Binding Locales}" SelectedItem="{Binding SelectedLocale}"/>
+
+                    <StackPanel Grid.Row="5" Margin="0,24,0,0">
+                        <Button Content="获取今日壁纸" Style="{StaticResource AccentButtonStyle}"
+                                Command="{Binding FetchCommand}" Margin="0,0,0,10" Padding="15,10"/>
+                        <Button Content="设为桌面壁纸" Command="{Binding SetWallpaperCommand}"
+                                Margin="0,0,0,10"/>
+                        <Button Content="保存到本地" Command="{Binding SaveCommand}"
+                                Margin="0,0,0,10"/>
+                    </StackPanel>
+
+                    <CheckBox Grid.Row="6" Content="开机自动更换壁纸"
+                              IsChecked="{Binding IsAutoStartEnabled}"
+                              Command="{Binding ToggleAutoStartCommand}"
+                              Margin="0,16,0,0"/>
+
+                    <TextBlock Grid.Row="7" Text="自动启动后，每次开机会自动下载&#10;并设置当日 Bing 壁纸，无后台驻留。"
+                               Foreground="#888888" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
+                    <Button Grid.Row="8" Content="查看历史壁纸 ▶" Click="HistoryButton_Click"
+                            Background="Transparent" Foreground="#0078d4"
+                            HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                            Margin="0,20,0,0" Padding="0,5"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="1" Background="#111111" Padding="12,6">
+            <TextBlock Text="{Binding StatusText}" Foreground="#888888" FontSize="12"/>
+        </Border>
+    </Grid>
+</Window>
