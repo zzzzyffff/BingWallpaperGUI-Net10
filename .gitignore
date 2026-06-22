@@ -37,3 +37,6 @@ desktop.ini
 
 # Logs
 *.log
+
+# Application data (user downloaded wallpapers and metadata)
+wallpapers/
