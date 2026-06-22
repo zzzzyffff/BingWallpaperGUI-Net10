@@ -83,7 +83,10 @@ bin\Release\net10.0-windows\win-x64\publish\
 
 ## 数据目录
 
-壁纸和元数据保存在程序所在目录下的 `wallpapers` 文件夹中：
+壁纸和元数据保存在 `wallpapers` 文件夹中：
+
+- **开发模式**（`dotnet run` / Visual Studio 调试）：`E:\MyPrograms\BingWallpaperGUI-Net10\wallpapers\`
+- **发布模式**（运行发布后的 exe）：`publish\wallpapers\`
 
 ```
 wallpapers/

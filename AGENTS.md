@@ -186,12 +186,32 @@ public static string DataDirectory
     get
     {
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        var dir = new DirectoryInfo(baseDir);
+
+        // 开发模式：如果 exe/dll 位于 bin/Debug|Release/... 下，且上级目录包含 .csproj，
+        // 则将壁纸保存到项目根目录，与 Python 原版的开发模式行为保持一致。
+        while (dir != null)
+        {
+            if (dir.Name.Equals("bin", StringComparison.OrdinalIgnoreCase))
+            {
+                var projectDir = dir.Parent;
+                if (projectDir != null &&
+                    Directory.EnumerateFiles(projectDir.FullName, "*.csproj").Any())
+                {
+                    return Path.Combine(projectDir.FullName, "wallpapers");
+                }
+            }
+            dir = dir.Parent;
+        }
+
+        // 发布模式：使用 exe 所在目录
         return Path.Combine(baseDir, "wallpapers");
     }
 }
 ```
 
-开发模式与发布模式均使用程序所在目录下的 `wallpapers` 文件夹。
+- **开发模式**（`dotnet run` / Visual Studio 调试）：壁纸保存到项目根目录下的 `wallpapers/`，与 Python 原版行为一致
+- **发布模式**（`dotnet publish` 后运行）：壁纸保存到 `publish/` 目录下的 `wallpapers/`，与 exe 同级
 
 ### 7.2 分辨率适配
 
