@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -20,10 +21,13 @@ public static class BingApiService
     private const string BingBase = "https://bing.com";
     private const int UhdArea = 3840 * 2160;
 
-    private static readonly HttpClient HttpClient = new HttpClient(new HttpClientHandler
+    private static readonly SocketsHttpHandler HttpHandler = new()
     {
-        AutomaticDecompression = System.Net.DecompressionMethods.All
-    })
+        AutomaticDecompression = DecompressionMethods.All,
+        PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+    };
+
+    private static readonly HttpClient HttpClient = new(HttpHandler)
     {
         Timeout = TimeSpan.FromSeconds(30)
     };
