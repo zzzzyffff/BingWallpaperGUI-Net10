@@ -13,6 +13,8 @@
     <Window.Resources>
         <conv:FilePathToThumbnailConverter x:Key="FilePathToThumbnailConverter"/>
         <conv:BingDateConverter x:Key="BingDateConverter"/>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <conv:InvertedBooleanToVisibilityConverter x:Key="InvertedBooleanToVisibilityConverter"/>
     </Window.Resources>
     <Grid Margin="15">
         <Grid.RowDefinitions>
@@ -27,7 +29,7 @@
                    Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                      Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=invert}">
+                      Visibility="{Binding IsEmpty, Converter={StaticResource InvertedBooleanToVisibilityConverter}}">
             <ItemsControl ItemsSource="{Binding Wallpapers}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -52,8 +54,15 @@
                                                FontSize="14" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Text="{Binding Copyright}" Foreground="#aaaaaa"
                                                FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                    <TextBlock Text="{Binding Date, Converter={StaticResource BingDateConverter}}"
-                                               Foreground="#666666" FontSize="12" Margin="0,4,0,0"/>
+                                    <TextBlock Foreground="#666666" FontSize="12" Margin="0,4,0,0">
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="{}{0}  |  {1}  |  {2}">
+                                                <Binding Path="Date" Converter="{StaticResource BingDateConverter}"/>
+                                                <Binding Path="Resolution"/>
+                                                <Binding Path="Locale"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
                                 </StackPanel>
 
                                 <!-- Buttons -->

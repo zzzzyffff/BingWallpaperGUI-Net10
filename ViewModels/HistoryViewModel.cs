@@ -76,8 +76,10 @@ public partial class HistoryViewModel : ObservableObject
 
     public void LoadWallpapers()
     {
-        Wallpapers = new ObservableCollection<LocalWallpaper>(DataService.GetLocalWallpapers());
+        var wallpapers = DataService.GetLocalWallpapers();
+        Wallpapers = new ObservableCollection<LocalWallpaper>(wallpapers);
         IsEmpty = Wallpapers.Count == 0;
+        Logger.Info($"HistoryViewModel 加载历史记录: 数量={Wallpapers.Count}, IsEmpty={IsEmpty}");
     }
 
     public static BitmapImage? LoadThumbnail(string path)

@@ -38,7 +38,8 @@ BingWallpaperGUI-Net10/
 │   ├── BoolToVisibilityConverter.cs
 │   ├── NullToVisibilityConverter.cs
 │   ├── FilePathToThumbnailConverter.cs
-│   └── BingDateConverter.cs
+│   ├── BingDateConverter.cs
+│   └── InvertedBooleanToVisibilityConverter.cs
 ├── icon.ico                        # 程序图标
 └── README.md / AGENTS.md           # 项目文档
 ```
@@ -123,6 +124,7 @@ dotnet --list-sdks
 
 - 模态对话框（`ShowDialog`）
 - 使用 `ItemsControl` + `DataTemplate` 绑定到 `HistoryViewModel.Wallpapers`
+- 每条记录展示缩略图、标题、版权、日期，并解析文件名显示 **分辨率** 与 **地区**
 - 支持「设为壁纸」「打开文件」和「删除」，命令参数为当前 `LocalWallpaper` 项
 - 删除时通过 `IDialogService.ShowQuestion` 确认，同时删除图片文件及 `.metadata/` 下 JSON
 - 缩略图通过 `FilePathToThumbnailConverter` 加载，并限制 `DecodePixelWidth = 360`，避免加载大量 4K 原图导致内存压力
@@ -222,7 +224,28 @@ public static string DataDirectory
 - **开发模式**（`dotnet run` / Visual Studio 调试）：壁纸保存到项目根目录下的 `wallpapers/`，与 Python 原版行为一致
 - **发布模式**（`dotnet publish` 后运行）：壁纸保存到 `publish/` 目录下的 `wallpapers/`，与 exe 同级
 
-### 7.2 分辨率适配
+### 7.2 壁纸文件命名
+
+下载保存的壁纸按以下格式命名：
+
+```
+{yyyyMMdd}_{标题}_{分辨率}_{地区}.jpg
+```
+
+例如：
+
+```
+20260621_一个郁郁葱葱的王国_1920x1080_zh-CN.jpg
+```
+
+- 标题经过 `BingApiService.SanitizeFileName` 处理，保留中文、字母、数字，其余字符替换为下划线
+- 分辨率取自用户选择的 `SelectedResolution`（如 `1920x1080`、`UHD`）
+- 地区取自 `SelectedLocale`（如 `zh-CN`、`en-US`）
+- 若同文件已存在，自动追加 `_1`、`_2` 等序号后缀
+
+`DataService.GetLocalWallpapers()` 会从文件名反向解析出分辨率与地区，供历史记录窗口展示。
+
+### 7.3 分辨率适配
 
 - 通过 `user32.dll!EnumDisplaySettings` 获取主屏幕**物理分辨率**（而非 WPF 设备无关单位）
 - 4K 及以上屏幕（面积 >= 3840×2160）默认选择 `UHD`
@@ -230,7 +253,7 @@ public static string DataDirectory
 - 自动启动模式下同样使用 `GetDefaultResolution()` 的结果，避免下载和显示器不匹配的分辨率
 - URL 分辨率替换逻辑：将 `_1920x1080` 替换为 `_UHD` 或 `_{resolution}`
 
-### 7.3 DPI 感知
+### 7.4 DPI 感知
 
 项目通过 `app.manifest` 声明 `PerMonitorV2` 与 `system` DPI 感知，并在 `App.xaml.cs` 中保留 `SetProcessDpiAwareness` / `SetProcessDPIAware` 作为旧系统 fallback：
 

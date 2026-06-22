@@ -40,3 +40,7 @@ desktop.ini
 
 # Application data (user downloaded wallpapers and metadata)
 wallpapers/
+
+# Debug screenshots
+screenshot_*.png
+debug_screenshot*.png

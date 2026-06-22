@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using BingWallpaperWPF.Models;
 
 namespace BingWallpaperWPF.Services;
@@ -48,8 +49,12 @@ public static class DataService
     public static List<LocalWallpaper> GetLocalWallpapers()
     {
         var list = new List<LocalWallpaper>();
+        Logger.Info($"开始扫描壁纸目录: {DataDirectory}");
         if (!Directory.Exists(DataDirectory))
+        {
+            Logger.Info("壁纸目录不存在，返回空列表");
             return list;
+        }
 
         var files = new DirectoryInfo(DataDirectory)
             .EnumerateFiles()
@@ -57,6 +62,8 @@ public static class DataService
             .Where(f => IsImageExtension(f.Extension))
             .OrderByDescending(f => f.LastWriteTime)
             .ToList();
+
+        Logger.Info($"扫描完成，找到 {files.Count} 个图片文件");
 
         foreach (var file in files)
         {
@@ -82,11 +89,35 @@ public static class DataService
                 }
             }
 
+            // 尝试从文件名解析分辨率与地区
+            TryParseFileName(file.Name, info);
+
             info.MetadataPath = metaPath;
             list.Add(info);
         }
 
+        Logger.Info($"加载完成，返回 {list.Count} 条历史记录");
         return list;
+    }
+
+    private static void TryParseFileName(string fileName, LocalWallpaper info)
+    {
+        try
+        {
+            string nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+            var match = Regex.Match(nameWithoutExt,
+                @"^(\d{8})_(.*)_((?:\d+x\d+)|UHD)_([a-zA-Z]{2}(?:-[a-zA-Z]{2})?)$");
+            if (match.Success)
+            {
+                info.Date = match.Groups[1].Value;
+                info.Resolution = match.Groups[3].Value;
+                info.Locale = match.Groups[4].Value;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"解析文件名失败: {fileName}", ex);
+        }
     }
 
     public static LocalWallpaper? GetTodayWallpaper()

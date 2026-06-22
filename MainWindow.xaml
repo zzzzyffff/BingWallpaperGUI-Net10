@@ -85,7 +85,6 @@
                     <CheckBox Grid.Row="6" Content="开机自动更换壁纸"
                               IsChecked="{Binding IsAutoStartEnabled, Mode=OneWay}"
                               Command="{Binding ToggleAutoStartCommand}"
-                              CommandParameter="{Binding IsChecked, RelativeSource={RelativeSource Self}}"
                               Margin="0,16,0,0"/>
 
                     <TextBlock Grid.Row="7" Text="自动启动后，每次开机会自动下载&#10;并设置当日 Bing 壁纸，无后台驻留。"

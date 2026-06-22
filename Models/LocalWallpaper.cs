@@ -8,5 +8,7 @@ public class LocalWallpaper
     public string Title { get; set; } = string.Empty;
     public string Copyright { get; set; } = string.Empty;
     public string Date { get; set; } = string.Empty;
+    public string Resolution { get; set; } = string.Empty;
+    public string Locale { get; set; } = string.Empty;
     public string? MetadataPath { get; set; }
 }

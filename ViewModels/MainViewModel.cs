@@ -119,9 +119,10 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void ToggleAutoStart(bool? isChecked)
+    private void ToggleAutoStart()
     {
-        bool newValue = isChecked == true;
+        bool oldValue = IsAutoStartEnabled;
+        bool newValue = !oldValue;
         try
         {
             AutoStartService.SetAutoStart(newValue);
@@ -130,6 +131,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            IsAutoStartEnabled = oldValue;
             _dialogService.ShowError($"设置开机启动失败: {ex.Message}");
         }
     }
@@ -209,7 +211,7 @@ public partial class MainViewModel : ObservableObject
         string dateStr = !string.IsNullOrEmpty(wp.StartDate)
             ? wp.StartDate
             : DateTime.Now.ToString("yyyyMMdd");
-        string fileName = $"{dateStr}_{safeTitle}.jpg";
+        string fileName = $"{dateStr}_{safeTitle}_{resolution}_{locale}.jpg";
         string destPath = Path.Combine(DataService.DataDirectory, fileName);
 
         int suffix = 1;
