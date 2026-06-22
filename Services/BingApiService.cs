@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -17,8 +18,15 @@ public static class BingApiService
     private const string UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36";
     private const string BingApi = "https://www.bing.com/HPImageArchive.aspx?format=js&idx={0}&n={1}&mkt={2}";
     private const string BingBase = "https://bing.com";
+    private const int UhdArea = 3840 * 2160;
 
-    private static readonly HttpClient HttpClient = new HttpClient();
+    private static readonly HttpClient HttpClient = new HttpClient(new HttpClientHandler
+    {
+        AutomaticDecompression = System.Net.DecompressionMethods.All
+    })
+    {
+        Timeout = TimeSpan.FromSeconds(30)
+    };
 
     public static readonly IReadOnlyList<string> ValidResolutions = new[]
     {
@@ -55,6 +63,7 @@ public static class BingApiService
             catch (Exception ex)
             {
                 lastErr = ex;
+                Logger.Error($"获取壁纸信息失败 (第{attempt}次尝试): {ex.Message}", ex);
                 if (attempt < retries)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(attempt * 2), ct);
@@ -91,6 +100,7 @@ public static class BingApiService
             catch (Exception ex)
             {
                 lastErr = ex;
+                Logger.Error($"下载图片失败 (第{attempt}次尝试): {ex.Message}", ex);
                 if (attempt < retries)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(attempt * 2), ct);
@@ -115,28 +125,103 @@ public static class BingApiService
 
     public static string GetDefaultResolution()
     {
-        int width = (int)SystemParameters.PrimaryScreenWidth;
-        int height = (int)SystemParameters.PrimaryScreenHeight;
+        var (width, height) = GetPrimaryScreenPhysicalResolution();
 
-        var standardRes = ValidResolutions.Where(r => r != "UHD").ToList();
         int screenArea = width * height;
-        string bestMatch = "UHD";
-        int bestDiff = int.MaxValue;
+        double screenRatio = (double)width / height;
 
-        foreach (var res in standardRes)
+        // 4K 及以上屏幕直接返回 UHD，保证壁纸清晰度
+        if (screenArea >= UhdArea)
+            return "UHD";
+
+        string bestMatch = "1920x1080";
+        int bestScore = int.MaxValue;
+
+        foreach (var res in ValidResolutions.Where(r => r != "UHD"))
         {
             var parts = res.Split('x');
             int w = int.Parse(parts[0]);
             int h = int.Parse(parts[1]);
             int area = w * h;
-            int diff = Math.Abs(area - screenArea);
-            if (diff < bestDiff)
+            double ratio = (double)w / h;
+
+            // 优先匹配宽高比，再匹配面积（避免 2560x1440 误配 1920x1200）
+            double ratioDiff = Math.Abs(ratio - screenRatio);
+            int areaDiff = Math.Abs(area - screenArea);
+            int score = (int)(ratioDiff * 1_000_000) + areaDiff / 1_000;
+
+            if (score < bestScore)
             {
-                bestDiff = diff;
+                bestScore = score;
                 bestMatch = res;
             }
         }
 
         return bestMatch;
+    }
+
+    private static (int Width, int Height) GetPrimaryScreenPhysicalResolution()
+    {
+        try
+        {
+            var devMode = new DEVMODE
+            {
+                dmDeviceName = new string(new char[32]),
+                dmSize = (short)Marshal.SizeOf(typeof(DEVMODE))
+            };
+
+            if (EnumDisplaySettings(null!, ENUM_CURRENT_SETTINGS, ref devMode))
+            {
+                return (devMode.dmPelsWidth, devMode.dmPelsHeight);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("获取物理屏幕分辨率失败，回退到 WPF 设备无关尺寸", ex);
+        }
+
+        return ((int)SystemParameters.PrimaryScreenWidth, (int)SystemParameters.PrimaryScreenHeight);
+    }
+
+    private const int ENUM_CURRENT_SETTINGS = -1;
+
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)]
+    private static extern bool EnumDisplaySettings(string? deviceName, int modeNum, ref DEVMODE devMode);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    private struct DEVMODE
+    {
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string dmDeviceName;
+        public short dmSpecVersion;
+        public short dmDriverVersion;
+        public short dmSize;
+        public short dmDriverExtra;
+        public int dmFields;
+        public int dmPositionX;
+        public int dmPositionY;
+        public int dmDisplayOrientation;
+        public int dmDisplayFixedOutput;
+        public short dmColor;
+        public short dmDuplex;
+        public short dmYResolution;
+        public short dmTTOption;
+        public short dmCollate;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string dmFormName;
+        public short dmLogPixels;
+        public int dmBitsPerPel;
+        public int dmPelsWidth;
+        public int dmPelsHeight;
+        public int dmDisplayFlags;
+        public int dmDisplayFrequency;
+        public int dmICMMethod;
+        public int dmICMIntent;
+        public int dmMediaType;
+        public int dmDitherType;
+        public int dmReserved1;
+        public int dmReserved2;
+        public int dmPanningWidth;
+        public int dmPanningHeight;
     }
 }

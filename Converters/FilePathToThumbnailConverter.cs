@@ -20,6 +20,7 @@ public class FilePathToThumbnailConverter : IValueConverter
             var bitmap = new BitmapImage();
             bitmap.BeginInit();
             bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.DecodePixelWidth = 360;
             bitmap.UriSource = new Uri(Path.GetFullPath(path));
             bitmap.EndInit();
             bitmap.Freeze();

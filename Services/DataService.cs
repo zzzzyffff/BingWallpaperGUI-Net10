@@ -76,9 +76,9 @@ public static class DataService
                         info.Date = data.StartDate ?? string.Empty;
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // ignore metadata errors
+                    Logger.Error($"读取壁纸元数据失败: {metaPath}", ex);
                 }
             }
 
@@ -87,6 +87,13 @@ public static class DataService
         }
 
         return list;
+    }
+
+    public static LocalWallpaper? GetTodayWallpaper()
+    {
+        var todayPrefix = DateTime.Now.ToString("yyyyMMdd");
+        return GetLocalWallpapers()
+            .FirstOrDefault(w => w.File.Name.StartsWith(todayPrefix, StringComparison.OrdinalIgnoreCase));
     }
 
     public static void SaveMetadata(WallpaperInfo wallpaper, string imagePath)

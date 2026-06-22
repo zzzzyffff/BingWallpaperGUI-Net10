@@ -57,6 +57,8 @@ public partial class MainViewModel : ObservableObject
         SelectedResolution = BingApiService.GetDefaultResolution();
         SelectedLocale = "zh-CN";
         IsAutoStartEnabled = AutoStartService.IsAutoStartEnabled();
+
+        Logger.Info($"初始化主窗口：默认分辨率={SelectedResolution}, 地区={SelectedLocale}");
     }
 
     public event EventHandler? RequestOpenHistory;
@@ -134,6 +136,8 @@ public partial class MainViewModel : ObservableObject
 
     public async Task RunAutoStartAsync()
     {
+        Logger.Info($"自动启动模式开始：分辨率={SelectedResolution}, 地区={SelectedLocale}");
+
         const int maxAttempts = 5;
         for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
@@ -148,6 +152,7 @@ public partial class MainViewModel : ObservableObject
             }
             catch (Exception ex)
             {
+                Logger.Error($"自动模式失败 (第{attempt}次)", ex);
                 if (attempt < maxAttempts)
                 {
                     StatusText = $"自动模式失败 (第{attempt}次): {ex.Message}，{attempt * 3}秒后重试...";
@@ -181,6 +186,8 @@ public partial class MainViewModel : ObservableObject
         finally
         {
             IsBusy = false;
+            _runningCts?.Dispose();
+            _runningCts = null;
         }
     }
 
@@ -204,6 +211,15 @@ public partial class MainViewModel : ObservableObject
             : DateTime.Now.ToString("yyyyMMdd");
         string fileName = $"{dateStr}_{safeTitle}.jpg";
         string destPath = Path.Combine(DataService.DataDirectory, fileName);
+
+        int suffix = 1;
+        string baseNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+        while (File.Exists(destPath))
+        {
+            fileName = $"{baseNameWithoutExt}_{suffix}.jpg";
+            destPath = Path.Combine(DataService.DataDirectory, fileName);
+            suffix++;
+        }
 
         string baseUrl = BingApiService.BuildAbsoluteUrl(wp.Url);
         string imgUrl = BingApiService.BuildImageUrl(baseUrl, resolution);
@@ -242,6 +258,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            Logger.Error($"无法加载图片预览: {path}", ex);
             PreviewImage = null;
             StatusText = $"无法加载图片: {ex.Message}";
         }
@@ -276,6 +293,7 @@ public partial class MainViewModel : ObservableObject
     {
         _runningCts?.Cancel();
         _runningCts?.Dispose();
+        _runningCts = null;
     }
 
     public void LoadWallpapersIfNeeded()
@@ -289,6 +307,28 @@ public partial class MainViewModel : ObservableObject
             _currentImagePath = null;
             _currentResolution = null;
         }
+    }
+
+    public void LoadTodayWallpaperIfExists()
+    {
+        var todayWp = DataService.GetTodayWallpaper();
+        if (todayWp == null)
+            return;
+
+        _currentImagePath = todayWp.File.FullName;
+        _currentResolution = null;
+        LoadPreview(_currentImagePath);
+
+        string dateStr = todayWp.Date;
+        if (dateStr.Length == 8)
+            dateStr = $"{dateStr[..4]}-{dateStr[4..6]}-{dateStr[6..]}";
+
+        InfoText = string.IsNullOrEmpty(todayWp.Title)
+            ? todayWp.File.Name
+            : $"{dateStr}  |  {todayWp.Title}  |  {todayWp.Copyright}";
+
+        HasDownloadedImage = true;
+        StatusText = $"已加载今日壁纸: {todayWp.File.Name}";
     }
 
     public void Cleanup()

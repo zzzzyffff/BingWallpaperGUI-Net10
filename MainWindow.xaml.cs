@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
         DataService.EnsureDirectories();
+        ViewModel.LoadTodayWallpaperIfExists();
     }
 
     private void HistoryButton_Click(object sender, RoutedEventArgs e)

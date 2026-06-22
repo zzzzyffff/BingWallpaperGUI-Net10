@@ -19,8 +19,9 @@ public static class AutoStartService
             var value = key.GetValue(AppName);
             return value != null;
         }
-        catch
+        catch (Exception ex)
         {
+            Logger.Error("读取开机启动注册表失败", ex);
             return false;
         }
     }
@@ -43,9 +44,9 @@ public static class AutoStartService
             {
                 key.DeleteValue(AppName, false);
             }
-            catch
+            catch (Exception ex)
             {
-                // ignored
+                Logger.Error("删除开机启动注册表值失败", ex);
             }
         }
     }

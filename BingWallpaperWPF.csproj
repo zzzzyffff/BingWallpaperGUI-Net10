@@ -7,8 +7,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>icon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>BingWallpaperGUI</AssemblyName>
     <RootNamespace>BingWallpaperWPF</RootNamespace>
+    <PublishDir>$(MSBuildProjectDirectory)\publish</PublishDir>
   </PropertyGroup>
 
   <ItemGroup>

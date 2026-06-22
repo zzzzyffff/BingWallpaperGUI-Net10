@@ -23,8 +23,9 @@ public static class WallpaperService
         {
             return SystemParametersInfoW(SPI_SETDESKWALLPAPER, 0, Path.GetFullPath(imagePath), SPIF_UPDATEINIFILE | SPIF_SENDCHANGE);
         }
-        catch
+        catch (Exception ex)
         {
+            Logger.Error($"设置桌面壁纸失败: {imagePath}", ex);
             return false;
         }
     }
