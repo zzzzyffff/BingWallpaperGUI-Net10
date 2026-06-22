@@ -117,9 +117,9 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void ToggleAutoStart()
+    private void ToggleAutoStart(bool? isChecked)
     {
-        bool newValue = !IsAutoStartEnabled;
+        bool newValue = isChecked == true;
         try
         {
             AutoStartService.SetAutoStart(newValue);
