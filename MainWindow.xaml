@@ -83,7 +83,7 @@
                     </StackPanel>
 
                     <CheckBox Grid.Row="6" Content="开机自动更换壁纸"
-                              IsChecked="{Binding IsAutoStartEnabled}"
+                              IsChecked="{Binding IsAutoStartEnabled, Mode=OneWay}"
                               Command="{Binding ToggleAutoStartCommand}"
                               Margin="0,16,0,0"/>
 

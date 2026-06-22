@@ -119,15 +119,16 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ToggleAutoStart()
     {
+        bool newValue = !IsAutoStartEnabled;
         try
         {
-            AutoStartService.SetAutoStart(IsAutoStartEnabled);
-            StatusText = $"开机自动启动: {(IsAutoStartEnabled ? "已开启" : "已关闭")}";
+            AutoStartService.SetAutoStart(newValue);
+            IsAutoStartEnabled = newValue;
+            StatusText = $"开机自动启动: {(newValue ? "已开启" : "已关闭")}";
         }
         catch (Exception ex)
         {
             _dialogService.ShowError($"设置开机启动失败: {ex.Message}");
-            IsAutoStartEnabled = !IsAutoStartEnabled;
         }
     }
 
