@@ -8,6 +8,7 @@
 - **特点**：无后台驻留、支持开机自动更换壁纸、支持多地区和多分辨率选择
 - **目标平台**：Windows 10/11
 - **界面风格**：深色主题（`#1e1e1e`），使用 `Microsoft YaHei UI` 字体
+- **开源协议**：MIT License（见仓库根目录 `LICENSE` 文件）
 
 ## 2. 项目结构
 
@@ -41,7 +42,8 @@ BingWallpaperGUI-Net10/
 │   ├── BingDateConverter.cs
 │   └── InvertedBooleanToVisibilityConverter.cs
 ├── icon.ico                        # 程序图标
-└── README.md / AGENTS.md           # 项目文档
+├── README.md / AGENTS.md           # 项目文档
+└── LICENSE                         # MIT 开源许可证
 ```
 
 ## 3. 开发环境
