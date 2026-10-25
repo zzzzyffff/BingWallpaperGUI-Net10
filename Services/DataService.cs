@@ -106,7 +106,7 @@ public static class DataService
         {
             string nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
             var match = Regex.Match(nameWithoutExt,
-                @"^(\d{8})_(.*)_((?:\d+x\d+)|UHD)_([a-zA-Z]{2}(?:-[a-zA-Z]{2})?)$");
+                @"^(\d{8})_(.*)_((?:\d+x\d+)|UHD)_([a-zA-Z]{2}(?:-[a-zA-Z]{2})?)(?:_\d+)?$");
             if (match.Success)
             {
                 info.Date = match.Groups[1].Value;

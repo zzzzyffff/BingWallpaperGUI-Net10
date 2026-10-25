@@ -20,6 +20,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0" Text="已下载的壁纸" FontSize="20" FontWeight="Bold" Margin="0,0,0,12"/>
@@ -28,63 +29,99 @@
                    HorizontalAlignment="Center" VerticalAlignment="Center"
                    Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                      Visibility="{Binding IsEmpty, Converter={StaticResource InvertedBooleanToVisibilityConverter}}">
-            <ItemsControl ItemsSource="{Binding Wallpapers}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Background="#2d2d2d" CornerRadius="6" Padding="12" Margin="0,0,0,10">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
+        <ListBox Grid.Row="1" ItemsSource="{Binding Wallpapers}"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ScrollViewer.CanContentScroll="True"
+                 VirtualizingStackPanel.IsVirtualizing="True"
+                 VirtualizingStackPanel.VirtualizationMode="Recycling"
+                 Background="Transparent" BorderThickness="0"
+                 Visibility="{Binding IsEmpty, Converter={StaticResource InvertedBooleanToVisibilityConverter}}">
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel/>
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <ContentPresenter/>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Border Background="#2d2d2d" CornerRadius="6" Padding="12" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                                <!-- Thumbnail -->
-                                <Border Grid.Column="0" Width="180" Height="120" Background="#1e1e1e"
-                                        CornerRadius="4" ClipToBounds="True">
-                                    <Image Source="{Binding File.FullName, Converter={StaticResource FilePathToThumbnailConverter}}"
-                                           Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
+                            <!-- Thumbnail -->
+                            <Border Grid.Column="0" Width="180" Height="120" Background="#1e1e1e"
+                                    CornerRadius="4" ClipToBounds="True">
+                                <Image Source="{Binding File.FullName, Converter={StaticResource FilePathToThumbnailConverter}}"
+                                       Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
 
-                                <!-- Text Info -->
-                                <StackPanel Grid.Column="1" Margin="15,0,10,0" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Title, FallbackValue='Bing 壁纸'}" Foreground="#e0e0e0"
-                                               FontSize="14" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding Copyright}" Foreground="#aaaaaa"
-                                               FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                    <TextBlock Foreground="#666666" FontSize="12" Margin="0,4,0,0">
-                                        <TextBlock.Text>
-                                            <MultiBinding StringFormat="{}{0}  |  {1}  |  {2}">
-                                                <Binding Path="Date" Converter="{StaticResource BingDateConverter}"/>
-                                                <Binding Path="Resolution"/>
-                                                <Binding Path="Locale"/>
-                                            </MultiBinding>
-                                        </TextBlock.Text>
-                                    </TextBlock>
-                                </StackPanel>
+                            <!-- Text Info -->
+                            <StackPanel Grid.Column="1" Margin="15,0,10,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Title, FallbackValue='Bing 壁纸'}" Foreground="#e0e0e0"
+                                           FontSize="14" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Copyright}" Foreground="#aaaaaa"
+                                           FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                <TextBlock Foreground="#666666" FontSize="12" Margin="0,4,0,0">
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="{}{0}  |  {1}  |  {2}">
+                                            <Binding Path="Date" Converter="{StaticResource BingDateConverter}"/>
+                                            <Binding Path="Resolution"/>
+                                            <Binding Path="Locale"/>
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </StackPanel>
 
-                                <!-- Buttons -->
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                    <Button Content="设为壁纸" Background="#0078d4" Foreground="White"
-                                            Padding="12,5" Margin="0,0,0,6"
-                                            Command="{Binding DataContext.SetWallpaperCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                            CommandParameter="{Binding}"/>
-                                    <Button Content="打开文件" Background="#3c3c3c" Foreground="#e0e0e0"
-                                            Padding="12,5" Margin="0,0,0,6"
-                                            Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                            CommandParameter="{Binding}"/>
-                                    <Button Content="删除" Background="#8b0000" Foreground="White"
-                                            Padding="12,5"
-                                            Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                            CommandParameter="{Binding}"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
+                            <!-- Buttons -->
+                            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                <Button Content="设为壁纸" Background="#0078d4" Foreground="White"
+                                        Padding="12,5" Margin="0,0,0,6"
+                                        Command="{Binding DataContext.SetWallpaperCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}"/>
+                                <Button Content="打开文件" Background="#3c3c3c" Foreground="#e0e0e0"
+                                        Padding="12,5" Margin="0,0,0,6"
+                                        Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}"/>
+                                <Button Content="删除" Background="#8b0000" Foreground="White"
+                                        Padding="12,5"
+                                        Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Grid Grid.Row="2" Margin="0,10,0,0"
+              Visibility="{Binding IsEmpty, Converter={StaticResource InvertedBooleanToVisibilityConverter}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" Content="上一页" Command="{Binding PreviousPageCommand}"
+                    MinWidth="80" Padding="12,5"/>
+            <TextBlock Grid.Column="1" Text="{Binding PageInfo}" Foreground="#aaaaaa" FontSize="13"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <Button Grid.Column="2" Content="下一页" Command="{Binding NextPageCommand}"
+                    MinWidth="80" Padding="12,5"/>
+        </Grid>
     </Grid>
 </Window>

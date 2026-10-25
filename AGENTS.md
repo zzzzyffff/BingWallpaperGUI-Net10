@@ -125,11 +125,12 @@ dotnet --list-sdks
 ### 4.5 历史记录窗口 `Views/HistoryWindow.xaml` / `HistoryWindow.xaml.cs`
 
 - 模态对话框（`ShowDialog`）
-- 使用 `ItemsControl` + `DataTemplate` 绑定到 `HistoryViewModel.Wallpapers`
+- 使用 `ListBox` + `DataTemplate` 绑定到 `HistoryViewModel.Wallpapers`，每页显示 10 条，支持上一页、下一页和页码导航
 - 每条记录展示缩略图、标题、版权、日期，并解析文件名显示 **分辨率** 与 **地区**
 - 支持「设为壁纸」「打开文件」和「删除」，命令参数为当前 `LocalWallpaper` 项
-- 删除时通过 `IDialogService.ShowQuestion` 确认，同时删除图片文件及 `.metadata/` 下 JSON
-- 缩略图通过 `FilePathToThumbnailConverter` 加载，并限制 `DecodePixelWidth = 360`，避免加载大量 4K 原图导致内存压力
+- 删除时通过 `IDialogService.ShowQuestion` 确认，同时删除图片文件及 `.metadata/` 下 JSON；删除后保持当前页，最后一页为空时自动回退
+- 缩略图通过 `FilePathToThumbnailConverter` 加载，并限制 `DecodePixelWidth = 360`
+- `ListBox` 启用 `VirtualizingStackPanel` 和容器回收，仅创建可见区域的列表项，降低内存占用
 
 ### 4.6 自动启动模式
 
@@ -243,9 +244,9 @@ public static string DataDirectory
 - 标题经过 `BingApiService.SanitizeFileName` 处理，保留中文、字母、数字，其余字符替换为下划线
 - 分辨率取自用户选择的 `SelectedResolution`（如 `1920x1080`、`UHD`）
 - 地区取自 `SelectedLocale`（如 `zh-CN`、`en-US`）
-- 若同文件已存在，自动追加 `_1`、`_2` 等序号后缀
+- 若同文件已存在，直接复用，不再重复下载或追加序号
 
-`DataService.GetLocalWallpapers()` 会从文件名反向解析出分辨率与地区，供历史记录窗口展示。
+`DataService.GetLocalWallpapers()` 会从文件名反向解析出分辨率与地区，供历史记录窗口展示，并兼容旧版本生成的 `_1`、`_2` 等序号后缀。
 
 ### 7.3 分辨率适配
 

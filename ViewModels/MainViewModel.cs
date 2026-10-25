@@ -15,14 +15,18 @@ namespace BingWallpaperWPF.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
+    private const int PreviewDecodePixelWidth = 1600;
+
     private readonly IDialogService _dialogService;
     private CancellationTokenSource? _runningCts;
     private string? _currentImagePath;
     private string? _currentResolution;
-    private List<WallpaperInfo> _wallpapers = new();
+    private string? _currentLocale;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(FetchCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SetWallpaperCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     private bool _isBusy;
 
     [ObservableProperty]
@@ -71,15 +75,17 @@ public partial class MainViewModel : ObservableObject
     }
 
     private bool CanFetch => !IsBusy;
+    private bool CanSetWallpaper => HasDownloadedImage && !IsBusy;
+    private bool CanSave => HasDownloadedImage && !IsBusy;
 
-    [RelayCommand(CanExecute = nameof(HasDownloadedImage))]
+    [RelayCommand(CanExecute = nameof(CanSetWallpaper))]
     private async Task SetWallpaperAsync()
     {
         if (string.IsNullOrEmpty(_currentImagePath))
             return;
 
         var selectedRes = SelectedResolution;
-        if (_currentResolution != selectedRes)
+        if (_currentResolution != selectedRes || _currentLocale != SelectedLocale)
         {
             await RunFetchAsync(setAfter: true);
             return;
@@ -88,7 +94,7 @@ public partial class MainViewModel : ObservableObject
         ApplyWallpaper();
     }
 
-    [RelayCommand(CanExecute = nameof(HasDownloadedImage))]
+    [RelayCommand(CanExecute = nameof(CanSave))]
     private void Save()
     {
         if (string.IsNullOrEmpty(_currentImagePath) || !File.Exists(_currentImagePath))
@@ -139,57 +145,62 @@ public partial class MainViewModel : ObservableObject
     public async Task RunAutoStartAsync()
     {
         Logger.Info($"自动启动模式开始：分辨率={SelectedResolution}, 地区={SelectedLocale}");
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
 
-        const int maxAttempts = 5;
-        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        try
         {
-            try
-            {
-                StatusText = $"自动模式：获取壁纸中... (第{attempt}次尝试)";
-                await DoFetchAsync(setAfter: true, CancellationToken.None);
-                StatusText = "壁纸已更新，程序退出";
-                await Task.Delay(2000);
-                RequestClose?.Invoke(this, EventArgs.Empty);
-                return;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"自动模式失败 (第{attempt}次)", ex);
-                if (attempt < maxAttempts)
-                {
-                    StatusText = $"自动模式失败 (第{attempt}次): {ex.Message}，{attempt * 3}秒后重试...";
-                    await Task.Delay(TimeSpan.FromSeconds(attempt * 3));
-                }
-                else
-                {
-                    StatusText = $"自动模式最终失败 (已重试{maxAttempts}次): {ex.Message}";
-                    await Task.Delay(5000);
-                    RequestClose?.Invoke(this, EventArgs.Empty);
-                }
-            }
+            StatusText = "自动模式：获取壁纸中...";
+            await DoFetchAsync(setAfter: true, cts.Token);
+            StatusText = "壁纸已更新，程序退出";
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            StatusText = "自动模式更新超时，程序退出";
+            Logger.Warning(StatusText);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"自动模式更新失败: {ex.Message}";
+            Logger.Error("自动模式失败", ex);
+        }
+        finally
+        {
+            RequestClose?.Invoke(this, EventArgs.Empty);
         }
     }
 
     private async Task RunFetchAsync(bool setAfter)
     {
-        CancelRunningTasks();
-        _runningCts = new CancellationTokenSource();
-        var ct = _runningCts.Token;
+        var previousCts = _runningCts;
+        var cts = new CancellationTokenSource();
+        _runningCts = cts;
+        previousCts?.Cancel();
+        var ct = cts.Token;
 
         IsBusy = true;
         try
         {
             await DoFetchAsync(setAfter, ct);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            Logger.Info("壁纸获取已取消");
+        }
         catch (Exception ex)
         {
-            _dialogService.ShowError(ex.Message);
+            if (ReferenceEquals(_runningCts, cts))
+                _dialogService.ShowError(ex.Message);
+            else
+                Logger.Error("已替换的壁纸获取任务失败", ex);
         }
         finally
         {
-            IsBusy = false;
-            _runningCts?.Dispose();
-            _runningCts = null;
+            if (ReferenceEquals(_runningCts, cts))
+            {
+                _runningCts = null;
+                IsBusy = false;
+            }
+            cts.Dispose();
         }
     }
 
@@ -199,49 +210,50 @@ public partial class MainViewModel : ObservableObject
         var resolution = SelectedResolution ?? "1920x1080";
 
         StatusText = "正在从 Bing 获取壁纸...";
-        var images = await BingApiService.FetchWallpapersAsync(locale: locale, n: 8, ct: ct);
+        var images = await BingApiService.FetchWallpapersAsync(locale: locale, n: 1, ct: ct);
 
         if (images.Count == 0)
             throw new InvalidOperationException("Bing 没有返回壁纸数据");
 
-        _wallpapers = images;
         var wp = images[0];
-
         string safeTitle = BingApiService.SanitizeFileName(wp.Title);
         string dateStr = !string.IsNullOrEmpty(wp.StartDate)
             ? wp.StartDate
             : DateTime.Now.ToString("yyyyMMdd");
         string fileName = $"{dateStr}_{safeTitle}_{resolution}_{locale}.jpg";
         string destPath = Path.Combine(DataService.DataDirectory, fileName);
+        bool reuseExisting = File.Exists(destPath);
 
-        int suffix = 1;
-        string baseNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
-        while (File.Exists(destPath))
+        if (reuseExisting)
         {
-            fileName = $"{baseNameWithoutExt}_{suffix}.jpg";
-            destPath = Path.Combine(DataService.DataDirectory, fileName);
-            suffix++;
+            StatusText = $"壁纸已存在，直接复用: {fileName}";
+            Logger.Info($"复用已下载壁纸: {destPath}");
+        }
+        else
+        {
+            string baseUrl = BingApiService.BuildAbsoluteUrl(wp.Url);
+            string imgUrl = BingApiService.BuildImageUrl(baseUrl, resolution);
+            StatusText = $"下载中: {resolution} ...";
+            await BingApiService.DownloadImageAsync(imgUrl, destPath, ct: ct);
         }
 
-        string baseUrl = BingApiService.BuildAbsoluteUrl(wp.Url);
-        string imgUrl = BingApiService.BuildImageUrl(baseUrl, resolution);
-
-        StatusText = $"下载中: {resolution} ...";
-        await BingApiService.DownloadImageAsync(imgUrl, destPath, ct: ct);
         DataService.SaveMetadata(wp, destPath);
+        ct.ThrowIfCancellationRequested();
 
         _currentImagePath = destPath;
         _currentResolution = resolution;
+        _currentLocale = locale;
 
         LoadPreview(destPath);
         UpdateInfo(wp);
         HasDownloadedImage = true;
 
-        StatusText = $"壁纸已下载: {fileName}";
+        StatusText = reuseExisting ? $"已加载已有壁纸: {fileName}" : $"壁纸已下载: {fileName}";
 
         if (setAfter)
         {
-            WallpaperService.SetDesktopWallpaper(destPath);
+            if (!WallpaperService.SetDesktopWallpaper(destPath))
+                throw new InvalidOperationException("无法设置桌面壁纸");
             StatusText = "壁纸已更新";
         }
     }
@@ -253,6 +265,7 @@ public partial class MainViewModel : ObservableObject
             var bitmap = new BitmapImage();
             bitmap.BeginInit();
             bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.DecodePixelWidth = PreviewDecodePixelWidth;
             bitmap.UriSource = new Uri(Path.GetFullPath(path));
             bitmap.EndInit();
             bitmap.Freeze();
@@ -294,8 +307,6 @@ public partial class MainViewModel : ObservableObject
     private void CancelRunningTasks()
     {
         _runningCts?.Cancel();
-        _runningCts?.Dispose();
-        _runningCts = null;
     }
 
     public void LoadWallpapersIfNeeded()
@@ -308,6 +319,7 @@ public partial class MainViewModel : ObservableObject
             StatusText = "当前壁纸已从历史记录中删除";
             _currentImagePath = null;
             _currentResolution = null;
+            _currentLocale = null;
         }
     }
 
@@ -318,7 +330,8 @@ public partial class MainViewModel : ObservableObject
             return;
 
         _currentImagePath = todayWp.File.FullName;
-        _currentResolution = null;
+        _currentResolution = string.IsNullOrEmpty(todayWp.Resolution) ? null : todayWp.Resolution;
+        _currentLocale = string.IsNullOrEmpty(todayWp.Locale) ? null : todayWp.Locale;
         LoadPreview(_currentImagePath);
 
         string dateStr = todayWp.Date;

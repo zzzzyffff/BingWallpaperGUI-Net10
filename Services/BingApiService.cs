@@ -64,6 +64,10 @@ public static class BingApiService
                 var data = JsonSerializer.Deserialize<BingApiResponse>(json);
                 return data?.Images ?? new List<WallpaperInfo>();
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 lastErr = ex;
@@ -90,28 +94,51 @@ public static class BingApiService
     {
         Exception? lastErr = null;
         Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+        string tempPath = $"{destPath}.{Guid.NewGuid():N}.tmp";
 
-        for (int attempt = 1; attempt <= retries; attempt++)
+        try
+        {
+            for (int attempt = 1; attempt <= retries; attempt++)
+            {
+                try
+                {
+                    using var response = await HttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+                    response.EnsureSuccessStatusCode();
+                    await using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+                    {
+                        await response.Content.CopyToAsync(fs, ct);
+                    }
+                    File.Move(tempPath, destPath, true);
+                    return;
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    lastErr = ex;
+                    Logger.Error($"下载图片失败 (第{attempt}次尝试): {ex.Message}", ex);
+                    if (attempt < retries)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(attempt * 2), ct);
+                    }
+                }
+            }
+            throw new InvalidOperationException($"下载图片失败 (已重试{retries}次): {lastErr?.Message}", lastErr);
+        }
+        finally
         {
             try
             {
-                using var response = await HttpClient.GetAsync(url, ct);
-                response.EnsureSuccessStatusCode();
-                await using var fs = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None);
-                await response.Content.CopyToAsync(fs, ct);
-                return;
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
             }
             catch (Exception ex)
             {
-                lastErr = ex;
-                Logger.Error($"下载图片失败 (第{attempt}次尝试): {ex.Message}", ex);
-                if (attempt < retries)
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(attempt * 2), ct);
-                }
+                Logger.Warning($"清理临时图片失败: {tempPath}; {ex.Message}");
             }
         }
-        throw new InvalidOperationException($"下载图片失败 (已重试{retries}次): {lastErr?.Message}", lastErr);
     }
 
     public static string BuildAbsoluteUrl(string relativeUrl)

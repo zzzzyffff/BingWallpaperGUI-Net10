@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,13 +14,28 @@ namespace BingWallpaperWPF.ViewModels;
 
 public partial class HistoryViewModel : ObservableObject
 {
+    private const int PageSize = 10;
+
     private readonly IDialogService _dialogService;
+    private List<LocalWallpaper> _allWallpapers = new();
 
     [ObservableProperty]
     private ObservableCollection<LocalWallpaper> _wallpapers = new();
 
     [ObservableProperty]
     private bool _isEmpty = true;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PreviousPageCommand))]
+    [NotifyCanExecuteChangedFor(nameof(NextPageCommand))]
+    private int _currentPage = 1;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(NextPageCommand))]
+    private int _pageCount = 1;
+
+    [ObservableProperty]
+    private string _pageInfo = string.Empty;
 
     public HistoryViewModel(IDialogService dialogService)
     {
@@ -66,7 +83,8 @@ public partial class HistoryViewModel : ObservableObject
         try
         {
             DataService.DeleteWallpaper(item);
-            LoadWallpapers();
+            _allWallpapers.Remove(item);
+            ShowCurrentPage();
         }
         catch (Exception ex)
         {
@@ -74,12 +92,40 @@ public partial class HistoryViewModel : ObservableObject
         }
     }
 
+    [RelayCommand(CanExecute = nameof(CanGoPrevious))]
+    private void PreviousPage()
+    {
+        CurrentPage--;
+        ShowCurrentPage();
+    }
+
+    private bool CanGoPrevious => CurrentPage > 1;
+
+    [RelayCommand(CanExecute = nameof(CanGoNext))]
+    private void NextPage()
+    {
+        CurrentPage++;
+        ShowCurrentPage();
+    }
+
+    private bool CanGoNext => CurrentPage < PageCount;
+
     public void LoadWallpapers()
     {
-        var wallpapers = DataService.GetLocalWallpapers();
-        Wallpapers = new ObservableCollection<LocalWallpaper>(wallpapers);
-        IsEmpty = Wallpapers.Count == 0;
-        Logger.Info($"HistoryViewModel 加载历史记录: 数量={Wallpapers.Count}, IsEmpty={IsEmpty}");
+        _allWallpapers = DataService.GetLocalWallpapers();
+        CurrentPage = 1;
+        ShowCurrentPage();
+        Logger.Info($"HistoryViewModel 加载历史记录: 数量={_allWallpapers.Count}, IsEmpty={IsEmpty}");
+    }
+
+    private void ShowCurrentPage()
+    {
+        PageCount = Math.Max(1, (_allWallpapers.Count + PageSize - 1) / PageSize);
+        CurrentPage = Math.Clamp(CurrentPage, 1, PageCount);
+        Wallpapers = new ObservableCollection<LocalWallpaper>(
+            _allWallpapers.Skip((CurrentPage - 1) * PageSize).Take(PageSize));
+        IsEmpty = _allWallpapers.Count == 0;
+        PageInfo = $"第 {CurrentPage} / {PageCount} 页  ·  共 {_allWallpapers.Count} 张";
     }
 
     public static BitmapImage? LoadThumbnail(string path)
